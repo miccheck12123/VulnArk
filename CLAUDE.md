@@ -2,271 +2,404 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 项目概述
+## Project Overview
 
-VulnArk 是一个现代化的漏洞管理平台，采用前后端分离架构：
-- **后端**: Go (Gin 框架) + MySQL/GORM
-- **前端**: Vue 3 + Element Plus + ECharts
-- **部署**: Docker Compose
+**VulnArk** (v0.1.3) is a modern vulnerability management platform with a separated frontend/backend architecture:
+- **Backend**: Go 1.18+ (Gin framework) + MySQL/GORM
+- **Frontend**: Vue 3 + Element Plus + ECharts
+- **Deployment**: Docker Compose (3 containers: frontend, backend, mysql)
 
-该平台提供漏洞管理、资产管理、知识库、漏洞库、自动扫描、CI/CD 集成、AI 风险评估等核心功能。
+### Core Features
+- Vulnerability lifecycle management (discovery to remediation)
+- Asset inventory tracking
+- Knowledge base for security documentation
+- Known vulnerability database (CVE/CWE)
+- Automated scanning integration (Nessus, Xray, AWVS, ZAP)
+- CI/CD pipeline integration (Jenkins, GitLab CI, GitHub Actions)
+- AI-powered risk assessment
+- Multi-channel notifications (DingTalk, Feishu, Work WeChat, Email)
 
-## 常用命令
+## Quick Commands
 
-### Docker 部署（推荐）
+### Docker Deployment (Recommended)
 
 ```bash
-# 一键部署（交互式配置）
-chmod +x deploy.sh
-./deploy.sh
+# Interactive deployment
+chmod +x deploy.sh && ./deploy.sh
 
-# 手动启动服务
+# Manual deployment
 docker-compose up -d --build
 
-# 查看容器状态
-docker-compose ps
+# View logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f mysql
 
-# 查看日志
-docker-compose logs -f backend   # 后端日志
-docker-compose logs -f frontend  # 前端日志
-docker-compose logs -f mysql     # 数据库日志
-
-# 重启服务
+# Restart / Stop / Remove
 docker-compose restart
-
-# 停止服务
 docker-compose stop
-
-# 完全删除（包括数据卷）
-docker-compose down -v
+docker-compose down -v  # Removes volumes
 ```
 
-### 后端开发
+### Backend Development
 
 ```bash
 cd backend
+go mod download          # Install dependencies
+go run main.go           # Run development server
+go build -o vulnark main.go  # Build binary
 
-# 安装依赖
-go mod download
-
-# 开发环境运行（使用 config.yaml）
-go run main.go
-
-# 构建
-go build -o vulnark main.go
-
-# 创建管理员用户（如需手动创建）
+# Admin user creation (if needed)
 mysql -u vulnark -p vulnark < create_admin.sql
-
-# 清理测试数据
-chmod +x clean_test_data.sh
-./clean_test_data.sh
-# 或直接使用 SQL
-mysql -u vulnark -p vulnark < clean_test_data.sql
 ```
 
-### 前端开发
+### Frontend Development
 
 ```bash
 cd frontend
-
-# 安装依赖
-npm install
-
-# 开发服务器（热重载）
-npm run serve
-
-# 生产构建
-npm run build
-
-# 代码检查
-npm run lint
+npm install              # Install dependencies
+npm run serve            # Dev server with hot reload (port 8081)
+npm run build            # Production build
+npm run lint             # Code linting
 ```
 
-## 架构设计
+## Architecture
 
-### 后端架构
-
-后端采用标准的 MVC 分层架构：
+### Project Structure
 
 ```
-backend/
-├── cmd/                      # 命令行工具（如创建管理员）
-├── config/                   # 配置文件
-│   ├── config.yaml          # 本地开发配置
-│   └── config.docker.yaml   # Docker 环境配置
-├── controllers/             # 控制器层（处理 HTTP 请求）
-│   ├── user_controller.go
-│   ├── vulnerability_controller.go
-│   ├── asset_controller.go
-│   ├── vulnerability_assignment_controller.go
-│   ├── knowledge_controller.go
-│   ├── vulndb_controller.go
-│   ├── scan_controller.go
-│   ├── integration_controller.go
-│   ├── dashboard_controller.go
-│   ├── settings_controller.go
-│   └── ai_controller.go
-├── models/                  # 数据模型层（ORM 模型）
-│   ├── user.go
-│   ├── vulnerability.go
-│   ├── vulnerability_assignment.go
-│   ├── asset.go
-│   ├── knowledge.go
-│   ├── vulndb.go
-│   ├── scan.go
-│   ├── integration.go
-│   └── settings.go
-├── middleware/              # 中间件
-│   ├── auth.go             # JWT 认证
-│   ├── admin_auth.go       # 管理员权限
-│   └── cors.go             # CORS 处理
-├── routes/                  # 路由配置
-│   └── routes.go
-├── utils/                   # 工具函数
-│   ├── database.go         # 数据库连接管理
-│   ├── notification.go     # 通知服务（钉钉/飞书/企业微信/邮件）
-│   ├── random.go
-│   └── time.go
-└── main.go                  # 应用入口
+VulnArk/
+├── backend/
+│   ├── cmd/create_admin/     # CLI tool for admin creation
+│   ├── config/
+│   │   ├── config.yaml       # Local development config
+│   │   └── config.docker.yaml # Docker environment config
+│   ├── controllers/          # HTTP request handlers (11 files)
+│   ├── middleware/           # Auth, admin, CORS (3 files)
+│   ├── models/               # GORM data models (10 files)
+│   ├── routes/routes.go      # Route definitions
+│   ├── utils/                # Database, notifications, helpers
+│   ├── main.go               # Application entry
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── api/              # API client modules (11 files)
+│   │   ├── components/       # Reusable Vue components
+│   │   ├── layout/           # App layout components
+│   │   ├── router/index.js   # Vue Router config
+│   │   ├── store/            # Vuex state management
+│   │   ├── utils/            # Request, auth, formatting
+│   │   ├── views/            # Page components (31 files)
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── nginx.conf            # Nginx reverse proxy config
+│   └── Dockerfile
+├── mysql/
+│   ├── init/                 # SQL initialization scripts
+│   └── my.cnf                # MySQL configuration
+├── docs/                     # CI/CD integration docs
+├── examples/                 # CI/CD config examples
+├── docker-compose.yml
+├── deploy.sh                 # Interactive deployment script
+└── CLAUDE.md
 ```
 
-**关键设计点：**
+### Backend Architecture
 
-1. **配置管理**: 使用 Viper 读取 YAML 配置，环境变量优先级高于配置文件
-2. **数据库连接**: `utils/database.go` 实现连接重试机制（5 次重试，每次间隔 5 秒）
-3. **路由分组**:
-   - `/api/v1` - 公共路由（登录等）
-   - `/api/v1` + JWT 中间件 - 需要认证的路由
-   - `/api/v1/admin` + 管理员中间件 - 管理员专用路由
-4. **自动迁移**: `main.go` 中的 `autoMigrateModels()` 在启动时自动创建/更新数据库表
-5. **默认管理员**: 启动时自动创建默认管理员账户（用户名: admin, 密码: admin123）
+#### Controllers (`backend/controllers/`)
 
-### 前端架构
+| File | Purpose | Key Endpoints |
+|------|---------|---------------|
+| `user_controller.go` | User auth & management | Login, GetUserInfo, CRUD users |
+| `vulnerability_controller.go` | Vulnerability CRUD | List, Create, Update, Delete, BatchImport |
+| `asset_controller.go` | Asset management | CRUD, BatchImport, Export, GetVulnerabilities |
+| `vulnerability_assignment_controller.go` | Task distribution | Assign, UpdateStatus, GetMyAssignments |
+| `knowledge_controller.go` | Knowledge base | CRUD articles, GetTypes, GetCategories |
+| `vulndb_controller.go` | CVE database | CRUD entries, SearchByCVE, BatchImport |
+| `scan_controller.go` | Scan task management | CRUD tasks, Start, Cancel, GetResults, Import |
+| `integration_controller.go` | CI/CD integration | CRUD integrations, Webhook receiver |
+| `dashboard_controller.go` | Analytics | Stats, Trends, Distributions, Activities |
+| `settings_controller.go` | System settings | Get/Save settings, Test connections |
+| `ai_controller.go` | AI features | PerformRiskAssessment |
 
-前端采用 Vue 3 Composition API + Vuex 状态管理：
+#### Models (`backend/models/`)
 
-```
-frontend/src/
-├── api/                     # API 封装层
-│   ├── index.js            # 通用 HTTP 方法
-│   ├── user.js
-│   ├── vulnerability.js
-│   ├── asset.js
-│   ├── assignment.js
-│   ├── knowledge.js
-│   ├── vulndb.js
-│   ├── scan.js
-│   ├── integration.js
-│   ├── dashboard.js
-│   └── settings.js
-├── components/              # 可复用组件
-├── layout/                  # 布局组件
-├── router/                  # 路由配置
-│   └── index.js
-├── store/                   # Vuex 状态管理
-├── utils/                   # 工具函数
-│   ├── auth.js             # 认证工具（token 管理）
-│   └── request.js          # Axios 请求封装
-├── views/                   # 页面组件
-│   ├── Dashboard.vue
-│   ├── Login.vue
-│   ├── Profile.vue
-│   ├── Settings.vue
-│   ├── vulnerability/      # 漏洞管理相关页面
-│   ├── assignment/         # 漏洞分配相关页面
-│   ├── asset/              # 资产管理相关页面
-│   ├── knowledge/          # 知识库相关页面
-│   ├── vulndb/             # 漏洞库相关页面
-│   ├── scan/               # 扫描管理相关页面
-│   ├── integration/        # 集成管理相关页面
-│   ├── user/               # 用户管理相关页面
-│   └── error/              # 错误页面
-├── App.vue
-└── main.js                  # 应用入口
+**User Model** (`user.go`):
+```go
+// Roles: admin, manager, auditor, operator, viewer
+// Password auto-hashed via BeforeCreate hook
+// Methods: CheckPassword(), IsAdmin(), CanManage(), CanEdit(), CanAudit()
 ```
 
-**关键设计点：**
+**Vulnerability Model** (`vulnerability.go`):
+```go
+// Severity: critical, high, medium, low, info
+// Status: new, verified, in_progress, fixed, closed, false_positive
+// Types: sql_injection, xss, cmd_injection, ssrf, file_upload, etc.
+// Has many-to-many relationship with Assets
+```
 
-1. **API 基础路径**: 使用 `/api` 相对路径，由 Nginx 反向代理到后端
-2. **认证机制**: Token 存储在 Cookie 中，启动时自动恢复用户状态
-3. **路由守卫**: 未登录自动跳转到登录页，保留重定向参数
-4. **中文固定**: 移除了国际化，固定使用中文
+**Asset Model** (`asset.go`):
+```go
+// Types: host, website, database, application, server, network, cloud, iot, other
+// Status: active, inactive, archived
+// Importance: critical, high, medium, low
+```
 
-### 数据库设计
+**VulnerabilityAssignment** (`vulnerability_assignment.go`):
+```go
+// Status: pending, accepted, rejected, fixed, pending_retest, closed
+// Tracks assignment history with VulnerabilityAssignmentHistory
+```
 
-核心实体关系：
-- **User** (用户) - 系统用户，包含角色（管理员/普通用户）
-- **Vulnerability** (漏洞) - 漏洞信息，关联资产和分配记录
-- **VulnerabilityAssignment** (漏洞分配) - 漏洞分配给用户的记录
-- **VulnerabilityAssignmentHistory** (分配历史) - 漏洞分配状态变更历史
-- **Asset** (资产) - 组织资产，关联漏洞
-- **Knowledge** (知识库) - 安全知识和修复指南
-- **VulnDB** (漏洞库) - 已知漏洞数据库（CVE 等）
-- **ScanTask** (扫描任务) - 自动化扫描任务配置
-- **ScanResult** (扫描结果) - 扫描任务的结果
-- **CIIntegration** (CI/CD 集成) - CI/CD 集成配置
-- **IntegrationHistory** (集成历史) - CI/CD 集成调用历史
-- **Settings** (系统设置) - 系统配置（JSON 字段存储）
+#### Middleware (`backend/middleware/`)
 
-## 配置说明
+| File | Purpose |
+|------|---------|
+| `auth.go` | JWT authentication, token generation/validation |
+| `admin_auth.go` | Admin-only route protection |
+| `cors.go` | CORS headers for cross-origin requests |
 
-### 环境变量优先级
+#### Routes Structure (`backend/routes/routes.go`)
 
-后端配置读取顺序：
-1. 环境变量（Docker 部署时使用）
-2. 配置文件（本地开发时使用）
+```
+/api/v1
+├── /health                    # Health check (public)
+├── /auth/login                # Login (public)
+├── [JWT Required]
+│   ├── /user/info             # Get current user
+│   ├── /user/update           # Update profile
+│   ├── /admin/*               # Admin-only endpoints
+│   ├── /assets/*              # Asset CRUD
+│   ├── /vulnerabilities/*     # Vulnerability CRUD
+│   ├── /assignments/*         # Assignment management
+│   ├── /knowledge/*           # Knowledge base
+│   ├── /vulndb/*              # CVE database
+│   ├── /scans/*               # Scan tasks
+│   ├── /dashboard/*           # Analytics
+│   ├── /integrations/*        # CI/CD
+│   ├── /settings/*            # System settings (admin)
+│   ├── /ai/risk-assessment    # AI features
+│   └── /webhooks/:type        # Webhook receivers
+```
 
-**关键环境变量:**
-- `DB_HOST` - 数据库主机（默认: mysql）
-- `DB_PORT` - 数据库端口（默认: 3306）
-- `DB_USER` - 数据库用户名
-- `DB_PASSWORD` - 数据库密码
-- `DB_NAME` - 数据库名称
-- `SERVER_HOST` - 后端监听地址（默认: 0.0.0.0）
-- `SERVER_PORT` - 后端监听端口（默认: 8080）
+#### Utilities (`backend/utils/`)
 
-### 配置文件位置
+| File | Purpose |
+|------|---------|
+| `database.go` | MySQL/MongoDB connection with retry (5 attempts, 5s interval) |
+| `notification.go` | Multi-channel notifications (750+ lines) |
+| `time.go` | CST timezone helpers |
+| `random.go` | Random string generation |
 
-- 本地开发: `backend/config/config.yaml`
-- Docker 部署: `backend/config/config.docker.yaml`（由 deploy.sh 处理）
+### Frontend Architecture
 
-## 漏洞复测功能
+#### API Layer (`frontend/src/api/`)
 
-v0.1.3 版本新增的核心功能：
+11 API modules mapping to backend controllers. All use `/api/v1` base path via Axios.
 
-1. **复测申请**: 被分配人修复漏洞后可以提交复测申请
-2. **状态管理**: 漏洞状态包括「待复测」状态
-3. **通知系统**: 管理员收到复测申请的实时通知
+#### State Management (`frontend/src/store/`)
 
-相关文件：
-- `controllers/vulnerability_assignment_controller.go` - 分配和状态更新逻辑
-- `models/vulnerability_assignment.go` - 分配模型
+- `modules/user.js` - Token, user info, authentication actions
+- `modules/app.js` - Sidebar state, device type
 
-## 已知问题修复记录
+#### Views (`frontend/src/views/`)
 
-### v0.1.2 修复的问题
-- 漏洞分配时的字段名不匹配（前后端字段命名规范统一）
-- 日期格式解析错误（修改为 ISO 标准格式）
+```
+views/
+├── Login.vue, Dashboard.vue, Profile.vue, Settings.vue
+├── vulnerability/ (Index, Add, Detail + AssignVulnerability component)
+├── asset/ (Index, Add, Edit, Detail)
+├── assignment/ (MyAssignments)
+├── knowledge/ (Index, Add, Edit, Detail)
+├── vulndb/ (Index, Add, Edit, Detail)
+├── scan/ (Index, Add, Edit, Detail, Results)
+├── integration/ (Index, Add, Detail)
+├── user/ (Index)
+└── error/ (404)
+```
 
-### v0.1.1 修复的问题
-- Docker 环境下 MySQL 连接失败（添加重试机制）
-- 配置文件路径不匹配（环境变量优先级）
-- 数据库连接配置读取错误
+## Configuration
 
-## 开发注意事项
+### Environment Variables (Backend)
 
-1. **数据库连接**: Docker 环境中后端需等待 MySQL 完全启动，已实现重试机制
-2. **默认管理员**: 首次启动自动创建 admin/admin123，生产环境需立即修改
-3. **前后端字段命名**: 遵循统一的命名规范，后端使用下划线，前端驼峰式（通过 JSON tag 映射）
-4. **日期格式**: 统一使用 ISO 8601 格式
-5. **CORS 配置**: 开发环境允许所有来源，生产环境需要限制
-6. **通知服务**: 支持钉钉、飞书、企业微信、邮件多种通知方式，在系统设置中配置
-7. **用户密码**: User 模型的 `BeforeCreate` 钩子自动加密密码，不要手动调用加密函数
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | `localhost` / `mysql` | Database host |
+| `DB_PORT` | `3306` | Database port |
+| `DB_USER` | - | Database username |
+| `DB_PASSWORD` | - | Database password |
+| `DB_NAME` | `vulnark` | Database name |
+| `SERVER_HOST` | `0.0.0.0` | Server bind address |
+| `SERVER_PORT` | `8080` | Server port |
 
-## 访问地址
+### Config Files
 
-Docker 部署后的默认访问地址：
-- 前端: http://localhost
-- 后端 API: http://localhost/api 或 http://localhost:8080
-- MySQL: localhost:3306
+- **Local dev**: `backend/config/config.yaml`
+- **Docker**: `backend/config/config.docker.yaml`
+
+Priority: Environment variables > Config file
+
+### Vue Config (`frontend/vue.config.js`)
+
+- Dev server: port 8081
+- API proxy: `/api` -> `localhost:8080`
+- Path alias: `@` -> `src/`
+
+## Key Development Patterns
+
+### Adding a New Feature
+
+1. **Backend**:
+   - Add model in `backend/models/`
+   - Add controller in `backend/controllers/`
+   - Register routes in `backend/routes/routes.go`
+   - Model is auto-migrated on startup in `main.go`
+
+2. **Frontend**:
+   - Add API module in `frontend/src/api/`
+   - Add view components in `frontend/src/views/`
+   - Register routes in `frontend/src/router/index.js`
+
+### API Request/Response Conventions
+
+- Backend uses `snake_case` field names
+- Frontend uses `camelCase` (JSON tags handle conversion)
+- Date format: ISO 8601
+- All responses wrapped: `{"code": 200, "data": {...}, "message": "..."}`
+
+### Authentication Flow
+
+1. Login via `/api/v1/auth/login` returns JWT token
+2. Token stored in Cookie (7-day expiry)
+3. Axios interceptor adds `Authorization: Bearer <token>`
+4. JWT middleware validates on protected routes
+5. User info fetched and stored in Vuex
+
+### Role-Based Access Control
+
+| Role | Permissions |
+|------|-------------|
+| `admin` | Full system access, user management, settings |
+| `manager` | Team management, assignment creation |
+| `auditor` | View and audit vulnerabilities |
+| `operator` | Create/edit vulnerabilities and assets |
+| `viewer` | Read-only access |
+
+Methods in User model: `IsAdmin()`, `CanManage()`, `CanEdit()`, `CanAudit()`
+
+## Vulnerability Assignment Workflow
+
+1. Admin/Manager assigns vulnerability to user
+2. User receives notification (if configured)
+3. Status flow: `pending` -> `accepted` -> `fixed` -> `pending_retest` -> `closed`
+4. History tracked in `VulnerabilityAssignmentHistory`
+5. Retest feature: assignee can request retest after fixing
+
+## Notification System (`backend/utils/notification.go`)
+
+Supports multiple channels:
+- **Work WeChat (企业微信)**: Webhook-based markdown
+- **Feishu (飞书)**: Interactive cards with signature
+- **DingTalk (钉钉)**: Markdown with HMAC-SHA256 signing
+- **Email**: SMTP with HTML templates, TLS support
+
+Events: Asset CRUD, Vulnerability CRUD, Status changes
+
+## CI/CD Integration
+
+### Webhook Endpoint
+
+```
+POST /api/v1/webhooks/:type
+Header: X-API-Key: <integration_api_key>
+Body: { scan results JSON }
+```
+
+### Supported Platforms
+
+- Jenkins (`examples/jenkinsfile-example`)
+- GitLab CI (`examples/gitlab-ci-example.yml`)
+- GitHub Actions (`examples/github-actions-example.yml`)
+- Custom webhooks
+
+## Database Schema
+
+Auto-migrated tables (12 total):
+- `users`, `vulnerabilities`, `assets`
+- `vulnerability_assets` (junction table)
+- `vulnerability_assignments`, `vulnerability_assignment_histories`
+- `knowledge`, `vuln_dbs`
+- `scan_tasks`, `scan_results`
+- `ci_integrations`, `integration_histories`
+- `settings`
+
+## Important Files for Common Tasks
+
+| Task | Files to Modify |
+|------|-----------------|
+| Add API endpoint | `controllers/*.go`, `routes/routes.go` |
+| Add database model | `models/*.go`, `main.go` (migration) |
+| Add frontend page | `views/*.vue`, `router/index.js`, `api/*.js` |
+| Modify auth | `middleware/auth.go`, `store/modules/user.js` |
+| Add notification channel | `utils/notification.go` |
+| Change settings schema | `models/settings.go`, `views/Settings.vue` |
+
+## Security Considerations
+
+1. **Password Hashing**: bcrypt via GORM BeforeCreate hook (never hash manually)
+2. **JWT Secret**: Configure strong secret in production
+3. **CORS**: Restrict `allowed_origins` in production
+4. **Default Admin**: Change `admin/admin123` immediately after first deploy
+5. **SQL Injection**: Use GORM parameterized queries (already implemented)
+6. **XSS Prevention**: DOMPurify used for markdown rendering in frontend
+
+## Troubleshooting
+
+### MySQL Connection Failed (Docker)
+
+Backend has retry mechanism (5 attempts, 5s interval). If still failing:
+```bash
+docker-compose logs mysql   # Check MySQL readiness
+docker-compose restart backend
+```
+
+### Token/Auth Issues
+
+- Check Cookie expiration (7 days)
+- Verify JWT secret matches between requests
+- Clear browser cookies and re-login
+
+### Build Failures
+
+```bash
+# Backend
+cd backend && go mod tidy
+
+# Frontend
+cd frontend && rm -rf node_modules && npm install
+```
+
+## Access URLs
+
+After Docker deployment:
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost/api or http://localhost:8080
+- **MySQL**: localhost:3306
+
+Default credentials: `admin` / `admin123`
+
+## Version History
+
+### v0.1.3 (Current)
+- Added retest workflow for vulnerability assignments
+- Enhanced notification system
+
+### v0.1.2
+- Fixed field name mismatches between frontend/backend
+- Fixed date format parsing issues
+
+### v0.1.1
+- Added MySQL connection retry mechanism
+- Fixed config file path resolution
+- Fixed database connection configuration
